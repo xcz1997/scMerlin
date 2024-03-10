@@ -1,14 +1,19 @@
 # scMerlin
 
 ## v2.5.0
-### Updated on March 03, 2024 by @decoderman with updates from @Martinski4GitHub
+### Updated on March 10, 2024 by @decoderman with updates from @Martinski4GitHub
 ## About
 scMerlin allows you to easily control the most common services/scripts on your router. scMerlin also augments your router's WebUI with a Sitemap and dynamic submenus for the main left menu of Asuswrt-Merlin.
 
 scMerlin is free to use under the [GNU General Public License version 3](https://opensource.org/licenses/GPL-3.0) (GPL 3.0).
 
 ## Installation
-Using your preferred SSH client/terminal, copy and paste the following command, then press Enter:
+scMerlin is available to install with [amtm - the Asuswrt-Merlin Terminal Menu](https://github.com/decoderman/amtm)
+Using your preferred SSH client/terminal, open amtm and use the i install option to install scMerlin:
+```sh
+amtm
+```
+Or using your preferred SSH client/terminal, copy and paste the following command, then press Enter:
 
 ```sh
 /usr/sbin/curl --retry 3 "https://raw.githubusercontent.com/decoderman/scmerlin/master/scmerlin.sh" -o "/jffs/scripts/scmerlin" && chmod 0755 /jffs/scripts/scmerlin && /jffs/scripts/scmerlin install
