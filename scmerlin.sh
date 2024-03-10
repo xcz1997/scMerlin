@@ -382,13 +382,13 @@ Update_File(){
 		rm -f "$tmpfile"
 	elif [ "$1" = "S95tailtaintdns" ]; then
 		tmpfile="/tmp/$1"
-		Download_File "$SCRIPT_REPO/files/$1" "$tmpfile"
+		Download_File "$SCRIPT_REPO/$1" "$tmpfile"
 		if ! diff -q "$tmpfile" "$SCRIPT_DIR/$1" >/dev/null 2>&1; then
 			if [ -f "$SCRIPT_DIR/S95tailtaintdns" ]; then
 				"$SCRIPT_DIR/S95tailtaintdns" stop >/dev/null 2>&1
 				sleep 2
 			fi
-			Download_File "$SCRIPT_REPO/files/$1" "$SCRIPT_DIR/$1"
+			Download_File "$SCRIPT_REPO/$1" "$SCRIPT_DIR/$1"
 			chmod 0755 "$SCRIPT_DIR/$1"
 			if [ "$(NTPBootWatchdog check)" = "ENABLED" ]; then
 				"$SCRIPT_DIR/S95tailtaintdns" start >/dev/null 2>&1
@@ -398,13 +398,13 @@ Update_File(){
 		rm -f "$tmpfile"
 	elif [ "$1" = "tailtaintdns" ] || [ "$1" = "tailtaintdnsd" ]; then
 		tmpfile="/tmp/$1"
-		Download_File "$SCRIPT_REPO/files/$1" "$tmpfile"
+		Download_File "$SCRIPT_REPO/$1" "$tmpfile"
 		if ! diff -q "$tmpfile" "$SCRIPT_DIR/$1" >/dev/null 2>&1; then
 			if [ -f "$SCRIPT_DIR/S95tailtaintdns" ]; then
 				"$SCRIPT_DIR/S95tailtaintdns" stop >/dev/null 2>&1
 				sleep 2
 			fi
-			Download_File "$SCRIPT_REPO/files/$1" "$SCRIPT_DIR/$1"
+			Download_File "$SCRIPT_REPO/$1" "$SCRIPT_DIR/$1"
 			chmod 0755 "$SCRIPT_DIR/$1"
 			if [ "$(NTPBootWatchdog check)" = "ENABLED" ]; then
 				"$SCRIPT_DIR/S95tailtaintdns" start >/dev/null 2>&1
@@ -414,9 +414,9 @@ Update_File(){
 		rm -f "$tmpfile"
 	elif [ "$1" = "sc.func" ]; then
 		tmpfile="/tmp/$1"
-		Download_File "$SCRIPT_REPO/files/$1" "$tmpfile"
+		Download_File "$SCRIPT_REPO/$1" "$tmpfile"
 		if ! diff -q "$tmpfile" "$SCRIPT_DIR/$1" >/dev/null 2>&1; then
-			Download_File "$SCRIPT_REPO/files/$1" "$SCRIPT_DIR/$1"
+			Download_File "$SCRIPT_REPO/$1" "$SCRIPT_DIR/$1"
 			chmod 0755 "$SCRIPT_DIR/$1"
 			Print_Output true "New version of $1 downloaded" "$PASS"
 		fi
