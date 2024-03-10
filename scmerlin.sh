@@ -11,7 +11,7 @@
 ##       https://github.com/jackyaz/scMerlin        ##
 ##                                                  ##
 ######################################################
-# Last Modified: 2024-Mar-03
+# Last Modified: 2024-Mar-10
 #-----------------------------------------------------
 
 ##########       Shellcheck directives     ###########
