@@ -11,7 +11,7 @@
 ##       https://github.com/jackyaz/scMerlin        ##
 ##                                                  ##
 ######################################################
-# Last Modified: 2024-Mar-10
+# Last Modified: 2024-Mar-12
 #-----------------------------------------------------
 
 ##########       Shellcheck directives     ###########
@@ -26,8 +26,8 @@
 ### Start of script variables ###
 readonly SCRIPT_NAME="scMerlin"
 readonly SCRIPT_NAME_LOWER="$(echo "$SCRIPT_NAME" | tr 'A-Z' 'a-z' | sed 's/d//')"
-readonly SCM_VERSION="v2.5.0"
-readonly SCRIPT_VERSION="v2.5.0"
+readonly SCM_VERSION="v2.5.1"
+readonly SCRIPT_VERSION="v2.5.1"
 SCRIPT_BRANCH="master"
 SCRIPT_REPO="https://raw.githubusercontent.com/decoderman/$SCRIPT_NAME/$SCRIPT_BRANCH"
 readonly SCRIPT_DIR="/jffs/addons/$SCRIPT_NAME_LOWER.d"
@@ -247,13 +247,13 @@ Update_Version(){
 		isupdate="$(echo "$updatecheckresult" | cut -f1 -d',')"
 		localver="$(echo "$updatecheckresult" | cut -f2 -d',')"
 		serverver="$(echo "$updatecheckresult" | cut -f3 -d',')"
-		
+
 		if [ "$isupdate" = "version" ]; then
 			Print_Output true "New version of $SCRIPT_NAME available - $serverver" "$PASS"
 		elif [ "$isupdate" = "md5" ]; then
 			Print_Output true "MD5 hash of $SCRIPT_NAME does not match - hotfix available - $serverver" "$PASS"
 		fi
-		
+
 		if [ "$isupdate" != "false" ]; then
 			printf "\\n${BOLD}Do you want to continue with the update? (y/n)${CLEARFORMAT}  "
 			read -r confirm
@@ -290,7 +290,7 @@ Update_Version(){
 			Clear_Lock
 		fi
 	fi
-	
+
 	if [ "$1" = "force" ]; then
 		serverver=$(/usr/sbin/curl -fsL --retry 3 "$SCRIPT_REPO/$SCRIPT_NAME_LOWER.sh" | grep "SCRIPT_VERSION=" | grep -m1 -oE 'v[0-9]{1,2}([.][0-9]{1,2})([.][0-9]{1,2})')
 		Print_Output true "Downloading latest version ($serverver) of $SCRIPT_NAME" "$PASS"
@@ -438,15 +438,15 @@ Create_Dirs(){
 	if [ ! -d "$SCRIPT_DIR" ]; then
 		mkdir -p "$SCRIPT_DIR"
 	fi
-	
+
 	if [ ! -d "$SHARED_DIR" ]; then
 		mkdir -p "$SHARED_DIR"
 	fi
-	
+
 	if [ ! -d "$SCRIPT_WEBPAGE_DIR" ]; then
 		mkdir -p "$SCRIPT_WEBPAGE_DIR"
 	fi
-	
+
 	if [ ! -d "$SCRIPT_WEB_DIR" ]; then
 		mkdir -p "$SCRIPT_WEB_DIR"
 	fi
@@ -454,14 +454,14 @@ Create_Dirs(){
 
 Create_Symlinks(){
 	rm -rf "${SCRIPT_WEB_DIR:?}/"* 2>/dev/null
-	
+
 	ln -s /tmp/scmerlin-top "$SCRIPT_WEB_DIR/top.htm" 2>/dev/null
 	ln -s /tmp/addonwebpages.tmp "$SCRIPT_WEB_DIR/addonwebpages.htm" 2>/dev/null
 	ln -s /tmp/scmcronjobs.tmp "$SCRIPT_WEB_DIR/scmcronjobs.htm" 2>/dev/null
-	
+
 	ln -s "$NTP_WATCHDOG_FILE" "$SCRIPT_WEB_DIR/watchdogenabled.htm" 2>/dev/null
 	ln -s "$TAIL_TAINTED_FILE" "$SCRIPT_WEB_DIR/tailtaintdnsenabled.htm" 2>/dev/null
-	
+
 	if [ ! -d "$SHARED_WEB_DIR" ]; then
 		ln -s "$SHARED_DIR" "$SHARED_WEB_DIR" 2>/dev/null
 	fi
@@ -473,11 +473,11 @@ Auto_ServiceEvent(){
 			if [ -f /jffs/scripts/service-event ]; then
 				STARTUPLINECOUNT=$(grep -c '# '"$SCRIPT_NAME" /jffs/scripts/service-event)
 				STARTUPLINECOUNTEX=$(grep -cx 'if echo "$2" | /bin/grep -q "'"$SCRIPT_NAME_LOWER"'"; then { /jffs/scripts/'"$SCRIPT_NAME_LOWER"' service_event "$@" & }; fi # '"$SCRIPT_NAME" /jffs/scripts/service-event)
-				
+
 				if [ "$STARTUPLINECOUNT" -gt 1 ] || { [ "$STARTUPLINECOUNTEX" -eq 0 ] && [ "$STARTUPLINECOUNT" -gt 0 ]; }; then
 					sed -i -e '/# '"$SCRIPT_NAME"'/d' /jffs/scripts/service-event
 				fi
-				
+
 				if [ "$STARTUPLINECOUNTEX" -eq 0 ]; then
 					echo 'if echo "$2" | /bin/grep -q "'"$SCRIPT_NAME_LOWER"'"; then { /jffs/scripts/'"$SCRIPT_NAME_LOWER"' service_event "$@" & }; fi # '"$SCRIPT_NAME" >> /jffs/scripts/service-event
 				fi
@@ -491,7 +491,7 @@ Auto_ServiceEvent(){
 		delete)
 			if [ -f /jffs/scripts/service-event ]; then
 				STARTUPLINECOUNT=$(grep -i -c '# '"$SCRIPT_NAME" /jffs/scripts/service-event)
-				
+
 				if [ "$STARTUPLINECOUNT" -gt 0 ]; then
 					sed -i -e '/# '"$SCRIPT_NAME"'/d' /jffs/scripts/service-event
 				fi
@@ -500,45 +500,56 @@ Auto_ServiceEvent(){
 	esac
 }
 
+##----------------------------------------##
+## Modified by Martinski W. [2024-Mar-12] ##
+##----------------------------------------##
 Auto_Startup(){
 	case $1 in
 		create)
 			if [ -f /jffs/scripts/post-mount ]; then
 				STARTUPLINECOUNT=$(grep -i -c '# '"$SCRIPT_NAME$" /jffs/scripts/post-mount)
-				
+
 				if [ "$STARTUPLINECOUNT" -gt 0 ]; then
 					sed -i -e '/# '"$SCRIPT_NAME$"'/d' /jffs/scripts/post-mount
 				fi
 			fi
 			if [ -f /jffs/scripts/services-start ]; then
+				## Clean up erroneous entries ##
+				grep -iq '# '"${SCRIPT_NAME}[$]$" /jffs/scripts/services-start && \
+				sed -i -e '/# '"${SCRIPT_NAME}[$]$"'/d' /jffs/scripts/services-start
+
 				STARTUPLINECOUNT=$(grep -i -c '# '"$SCRIPT_NAME$" /jffs/scripts/services-start)
 				STARTUPLINECOUNTEX=$(grep -i -cx "/jffs/scripts/$SCRIPT_NAME_LOWER startup"' & # '"$SCRIPT_NAME$" /jffs/scripts/services-start)
-				
+
 				if [ "$STARTUPLINECOUNT" -gt 1 ] || { [ "$STARTUPLINECOUNTEX" -eq 0 ] && [ "$STARTUPLINECOUNT" -gt 0 ]; }; then
 					sed -i -e '/# '"$SCRIPT_NAME$"'/d' /jffs/scripts/services-start
 				fi
-				
+
 				if [ "$STARTUPLINECOUNTEX" -eq 0 ]; then
-					echo "/jffs/scripts/$SCRIPT_NAME_LOWER startup"' & # '"$SCRIPT_NAME$" >> /jffs/scripts/services-start
+					echo "/jffs/scripts/$SCRIPT_NAME_LOWER startup"' & # '"$SCRIPT_NAME" >> /jffs/scripts/services-start
 				fi
 			else
 				echo "#!/bin/sh" > /jffs/scripts/services-start
 				echo "" >> /jffs/scripts/services-start
-				echo "/jffs/scripts/$SCRIPT_NAME_LOWER startup"' & # '"$SCRIPT_NAME$" >> /jffs/scripts/services-start
+				echo "/jffs/scripts/$SCRIPT_NAME_LOWER startup"' & # '"$SCRIPT_NAME" >> /jffs/scripts/services-start
 				chmod 0755 /jffs/scripts/services-start
 			fi
 		;;
 		delete)
 			if [ -f /jffs/scripts/post-mount ]; then
 				STARTUPLINECOUNT=$(grep -i -c '# '"$SCRIPT_NAME$" /jffs/scripts/post-mount)
-				
+
 				if [ "$STARTUPLINECOUNT" -gt 0 ]; then
 					sed -i -e '/# '"$SCRIPT_NAME$"'/d' /jffs/scripts/post-mount
 				fi
 			fi
 			if [ -f /jffs/scripts/services-start ]; then
+				## Clean up erroneous entries ##
+				grep -iq '# '"${SCRIPT_NAME}[$]$" /jffs/scripts/services-start && \
+				sed -i -e '/# '"${SCRIPT_NAME}[$]$"'/d' /jffs/scripts/services-start
+
 				STARTUPLINECOUNT=$(grep -i -c '# '"$SCRIPT_NAME$" /jffs/scripts/services-start)
-				
+
 				if [ "$STARTUPLINECOUNT" -gt 0 ]; then
 					sed -i -e '/# '"$SCRIPT_NAME$"'/d' /jffs/scripts/services-start
 				fi
@@ -570,7 +581,7 @@ Get_WebUI_URL(){
 	urlproto=""
 	urldomain=""
 	urlport=""
-	
+
 	urlpage="$(sed -nE "/$SCRIPT_NAME/ s/.*url\: \"(user[0-9]+\.asp)\".*/\1/p" /tmp/menuTree.js)"
 	if [ "$(nvram get http_enable)" -eq 1 ]; then
 		urlproto="https"
@@ -587,7 +598,7 @@ Get_WebUI_URL(){
 	else
 		urlport=":$(nvram get ${urlproto}_lanport)"
 	fi
-	
+
 	if echo "$urlpage" | grep -qE "user[0-9]+\.asp"; then
 		echo "${urlproto}://${urldomain}${urlport}/${urlpage}" | tr "A-Z" "a-z"
 	else
@@ -615,12 +626,12 @@ Mount_WebUI(){
 	fi
 	cp -f "$SCRIPT_DIR/scmerlin_www.asp" "$SCRIPT_WEBPAGE_DIR/$MyPage"
 	echo "$SCRIPT_NAME" > "$SCRIPT_WEBPAGE_DIR/$(echo $MyPage | cut -f1 -d'.').title"
-	
+
 	if [ "$(uname -o)" = "ASUSWRT-Merlin" ]; then
 		if [ ! -f /tmp/index_style.css ]; then
 			cp -f /www/index_style.css /tmp/
 		fi
-		
+
 		if ! grep -q '.menu_Addons' /tmp/index_style.css ; then
 			echo ".menu_Addons { background: url(ext/shared-jy/addons.png); background-size: contain; }" >> /tmp/index_style.css
 		fi
@@ -628,11 +639,11 @@ Mount_WebUI(){
 		if grep -q '.menu_Addons' /tmp/index_style.css && ! grep -q 'url(ext/shared-jy/addons.png); background-size: contain;' /tmp/index_style.css; then
 			sed -i 's/addons.png);/addons.png); background-size: contain;/' /tmp/index_style.css
 		fi
-		
+
 		if grep -q '.dropdown-content {display: block;}' /tmp/index_style.css ; then
 			sed -i '/dropdown-content/d' /tmp/index_style.css
 		fi
-		
+
 		if ! grep -q '.dropdown-content {visibility: visible;}' /tmp/index_style.css ; then
 			{
 				echo ".dropdown-content {top: 0px; left: 185px; visibility: hidden; position: absolute; background-color: #3a4042; min-width: 165px; box-shadow: 0px 8px 16px 0px rgba(0,0,0,0.2); z-index: 1000;}"
@@ -641,16 +652,16 @@ Mount_WebUI(){
 				echo ".dropdown:hover .dropdown-content {visibility: visible;}"
 			} >> /tmp/index_style.css
 		fi
-		
+
 		umount /www/index_style.css 2>/dev/null
 		mount -o bind /tmp/index_style.css /www/index_style.css
-		
+
 		if [ ! -f /tmp/menuTree.js ]; then
 			cp -f /www/require/modules/menuTree.js /tmp/
 		fi
-		
+
 		sed -i "\\~$MyPage~d" /tmp/menuTree.js
-		
+
 		## Use the same BEGIN/END insert tags here as those used in the "Menu_Uninstall()" function ##
 		if ! grep -qE '^menuName: "Addons"' /tmp/menuTree.js
 		then
@@ -666,10 +677,10 @@ tab: [\n\
 ]\n}\n\
 ${ENDIN_InsertTag}" /tmp/menuTree.js
 		fi
-		
+
 		sed -i "/url: \"javascript:var helpwindow=window.open('\/ext\/shared-jy\/redirect.htm'/i {url: \"$MyPage\", tabName: \"$SCRIPT_NAME\"}," /tmp/menuTree.js
 		realpage="$MyPage"
-		
+
 		if [ -f "$SCRIPT_DIR/sitemap.asp" ]; then
 			Get_WebUI_Page "$SCRIPT_DIR/sitemap.asp"
 			if [ "$MyPage" = "none" ]; then
@@ -680,11 +691,11 @@ ${ENDIN_InsertTag}" /tmp/menuTree.js
 			cp -f "$SCRIPT_DIR/sitemap.asp" "$SCRIPT_WEBPAGE_DIR/$MyPage"
 			sed -i "\\~$MyPage~d" /tmp/menuTree.js
 			sed -i "/url: \"javascript:var helpwindow=window.open('\/ext\/shared-jy\/redirect.htm'/a {url: \"$MyPage\", tabName: \"Sitemap\"}," /tmp/menuTree.js
-			
+
 			umount /www/state.js 2>/dev/null
 			cp -f /www/state.js /tmp/
 			sed -i 's~<td width=\\"335\\" id=\\"bottom_help_link\\" align=\\"left\\">~<td width=\\"335\\" id=\\"bottom_help_link\\" align=\\"left\\"><a style=\\"font-weight: bolder;text-decoration:underline;cursor:pointer;\\" href=\\"\/'"$MyPage"'\\" target=\\"_blank\\">Sitemap<\/a>\&nbsp\|\&nbsp~' /tmp/state.js
-			
+
 			cat << 'EOF' >> /tmp/state.js
 var myMenu = [];
 function AddDropdowns(){
@@ -715,17 +726,17 @@ function AddDropdowns(){
 
 function GenerateSiteMap(showurls){
 	myMenu = [];
-	
+
 	if(typeof menuList == 'undefined' || menuList == null){
 		setTimeout(GenerateSiteMap,1000,false);
 		return;
 	}
-	
+
 	for(var i = 0; i < menuList.length; i++){
 		var myobj = {};
 		myobj.menuName = menuList[i].menuName;
 		myobj.index = menuList[i].index;
-		
+
 		var myTabs = menuList[i].tab.filter(function(item){
 			return !menuExclude.tabs.includes(item.url);
 		});
@@ -752,19 +763,19 @@ function GenerateSiteMap(showurls){
 			return item.url != 'AdaptiveQoS_Adaptive.asp';
 		});
 		myobj.tabs = myTabs;
-		
+
 		myMenu.push(myobj);
 	}
-	
+
 	myMenu = myMenu.filter(function(item) {
 		return !menuExclude.menus.includes(item.index);
 	});
 	myMenu = myMenu.filter(function(item) {
 		return item.index != 'menu_Split';
 	});
-	
+
 	var sitemapstring = '';
-	
+
 	for(var i = 0; i < myMenu.length; i++){
 		if(myMenu[i].tabs[0].tabName == '__HIDE__' && myMenu[i].tabs[0].url != 'NULL'){
 			if(showurls == true){
@@ -804,10 +815,10 @@ GenerateSiteMap(false);
 AddDropdowns();
 EOF
 			mount -o bind /tmp/state.js /www/state.js
-			
+
 			Print_Output true "Mounted Sitemap page as $MyPage" "$PASS"
 		fi
-		
+
 		umount /www/require/modules/menuTree.js 2>/dev/null
 		mount -o bind /tmp/menuTree.js /www/require/modules/menuTree.js
 	fi
@@ -834,7 +845,7 @@ Get_Addon_Pages(){
 	urlproto=""
 	urldomain=""
 	urlport=""
-	
+
 	if [ "$(nvram get http_enable)" -eq 1 ]; then
 		urlproto="https"
 	else
@@ -850,7 +861,7 @@ Get_Addon_Pages(){
 	else
 		urlport=":$(nvram get ${urlproto}_lanport)"
 	fi
-	
+
 	weburl="$(echo "${urlproto}://${urldomain}${urlport}/" | tr "A-Z" "a-z")"
 	grep "user.*\.asp" /tmp/menuTree.js | awk -F'"' -v wu="$weburl" '{printf "%-12s "wu"%s\n",$4,$2}' | sort -f
 	grep "user.*\.asp" /tmp/menuTree.js | awk -F'"' -v wu="$weburl" '{printf "%s,"wu"%s\n",$4,$2}' > /tmp/addonwebpages.tmp
@@ -877,7 +888,7 @@ else
 		ntptimer=$((ntptimer+30))
 		sleep 30
 	done
-	
+
 	if [ "$ntptimer" -ge 600 ]; then
 		/usr/bin/logger -st ntpbootwatchdog "NTP failed to sync after 10 minutes - please check immediately!"
 		exit 1
@@ -892,14 +903,14 @@ EOF
 				if [ "$STARTUPLINECOUNT" -gt 0 ]; then
 					sed -i -e '/ntpbootwatchdog/d' /jffs/scripts/init-start
 				fi
-				
+
 				STARTUPLINECOUNT=$(grep -i -c '# '"$SCRIPT_NAME" /jffs/scripts/init-start)
 				STARTUPLINECOUNTEX=$(grep -i -cx "sh /jffs/scripts/ntpbootwatchdog.sh & # $SCRIPT_NAME" /jffs/scripts/init-start)
-				
+
 				if [ "$STARTUPLINECOUNT" -gt 1 ] || { [ "$STARTUPLINECOUNTEX" -eq 0 ] && [ "$STARTUPLINECOUNT" -gt 0 ]; }; then
 					sed -i -e '/# '"$SCRIPT_NAME"'/d' /jffs/scripts/init-start
 				fi
-				
+
 				if [ "$STARTUPLINECOUNTEX" -eq 0 ]; then
 					echo "sh /jffs/scripts/ntpbootwatchdog.sh & # $SCRIPT_NAME" >> /jffs/scripts/init-start
 				fi
@@ -915,7 +926,7 @@ EOF
 			rm -f /jffs/scripts/ntpbootwatchdog.sh
 			if [ -f /jffs/scripts/init-start ]; then
 				STARTUPLINECOUNT=$(grep -i -c '# '"$SCRIPT_NAME" /jffs/scripts/init-start)
-				
+
 				if [ "$STARTUPLINECOUNT" -gt 0 ]; then
 					sed -i -e '/# '"$SCRIPT_NAME"'/d' /jffs/scripts/init-start
 				fi
@@ -939,11 +950,11 @@ TailTaintDns(){
 			if [ -f /jffs/scripts/services-start ]; then
 				STARTUPLINECOUNT=$(grep -i -c '# '"$SCRIPT_NAME - tailtaintdns" /jffs/scripts/services-start)
 				STARTUPLINECOUNTEX=$(grep -i -cx "$SCRIPT_DIR/S95tailtaintdns start >/dev/null 2>&1 & # $SCRIPT_NAME - tailtaintdns" /jffs/scripts/services-start)
-				
+
 				if [ "$STARTUPLINECOUNT" -gt 1 ] || { [ "$STARTUPLINECOUNTEX" -eq 0 ] && [ "$STARTUPLINECOUNT" -gt 0 ]; }; then
 					sed -i -e '/# '"$SCRIPT_NAME - tailtaintdns"'/d' /jffs/scripts/services-start
 				fi
-				
+
 				if [ "$STARTUPLINECOUNTEX" -eq 0 ]; then
 					echo "$SCRIPT_DIR/S95tailtaintdns start >/dev/null 2>&1 & # $SCRIPT_NAME - tailtaintdns" >> /jffs/scripts/services-start
 				fi
@@ -959,7 +970,7 @@ TailTaintDns(){
 			"$SCRIPT_DIR/S95tailtaintdns" stop >/dev/null 2>&1
 			if [ -f /jffs/scripts/services-start ]; then
 				STARTUPLINECOUNT=$(grep -i -c '# '"$SCRIPT_NAME - tailtaintdns" /jffs/scripts/services-start)
-				
+
 				if [ "$STARTUPLINECOUNT" -gt 0 ]; then
 					sed -i -e '/# '"$SCRIPT_NAME"' - tailtaintdns/d' /jffs/scripts/services-start
 				fi
@@ -994,22 +1005,22 @@ Process_Upgrade(){
 	if [ ! -f "$SCRIPT_DIR/sitemap.asp" ]; then
 		Update_File sitemap.asp
 	fi
-	
+
 	if [ "$(uname -o)" = "ASUSWRT-Merlin" ]; then
 		if grep '.dropdown-content' /tmp/index_style.css | grep -q '{display: block;}'; then
-			
+
 			umount /www/index_style.css 2>/dev/null
 			cp -f /www/index_style.css /tmp/
-			
+
 			echo ".menu_Addons { background: url(ext/shared-jy/addons.png); }" >> /tmp/index_style.css
-			
+
 			{
 				echo ".dropdown-content {top: 0px; left: 185px; visibility: hidden; position: absolute; background-color: #3a4042; min-width: 165px; box-shadow: 0px 8px 16px 0px rgba(0,0,0,0.2); z-index: 1000;}"
 				echo ".dropdown-content a {padding: 6px 8px; text-decoration: none; display: block; height: 100%; min-height: 20px; max-height: 40px; font-weight: bold; text-shadow: 1px 1px 0px black; font-family: Verdana, MS UI Gothic, MS P Gothic, Microsoft Yahei UI, sans-serif; font-size: 12px; border: 1px solid #6B7071;}"
 				echo ".dropdown-content a:hover {background-color: #77a5c6;}"
 				echo ".dropdown:hover .dropdown-content {visibility: visible;}"
 			} >> /tmp/index_style.css
-			
+
 			mount -o bind /tmp/index_style.css /www/index_style.css
 		fi
 	fi
@@ -1390,13 +1401,13 @@ MainMenu(){
 				else
 					printf "CPU:\t [N/A]\\n"
 				fi
-				
+
 				##----------------------------------------------##
 				## Added/Modified by Martinski W. [2023-Jun-03] ##
 				##----------------------------------------------##
 				theTemptrVal="$(GetTemperatureValue "2.4GHz")"
 				if [ -n "$theTemptrVal" ] ; then printf "2.4 GHz: %s°C\n" "$theTemptrVal" ; fi
-				
+
 				if [ "$ROUTER_MODEL" = "RT-AC87U" ] || [ "$ROUTER_MODEL" = "RT-AC87R" ]; then
 					printf "5 GHz:   %s°C\n" "$(qcsapi_sockrpc get_temperature | awk 'FNR == 2 {print $3}')"
 					echo ; PressEnter
@@ -1511,26 +1522,26 @@ MainMenu(){
 			;;
 		esac
 	done
-	
+
 	ScriptHeader
 	MainMenu
 }
 
 Check_Requirements(){
 	CHECKSFAILED="false"
-	
+
 	if [ "$(nvram get jffs2_scripts)" -ne 1 ]; then
 		nvram set jffs2_scripts=1
 		nvram commit
 		Print_Output true "Custom JFFS Scripts enabled" "$WARN"
 	fi
-	
+
 	if ! Firmware_Version_Check; then
 		Print_Output false "Unsupported firmware version detected" "$ERR"
 		Print_Output false "$SCRIPT_NAME requires Merlin 384.15/384.13_4 or Fork 43E5 (or later)" "$ERR"
 		CHECKSFAILED="true"
 	fi
-	
+
 	if [ "$CHECKSFAILED" = "false" ]; then
 		return 0
 	else
@@ -1541,9 +1552,9 @@ Check_Requirements(){
 Menu_Install(){
 	Print_Output true "Welcome to $SCRIPT_NAME $SCRIPT_VERSION, a script by JackYaz"
 	sleep 1
-	
+
 	Print_Output false "Checking your router meets the requirements for $SCRIPT_NAME"
-	
+
 	if ! Check_Requirements; then
 		Print_Output false "Requirements for $SCRIPT_NAME not met, please see above for the reason(s)" "$CRIT"
 		PressEnter
@@ -1552,7 +1563,7 @@ Menu_Install(){
 		rm -rf "$SCRIPT_DIR" 2>/dev/null
 		exit 1
 	fi
-	
+
 	Create_Dirs
 	Shortcut_Script create
 	Set_Version_Custom_Settings local "$SCRIPT_VERSION"
@@ -1560,7 +1571,7 @@ Menu_Install(){
 	Create_Symlinks
 	Auto_Startup create 2>/dev/null
 	Auto_ServiceEvent create 2>/dev/null
-	
+
 	Update_File scmerlin_www.asp
 	Update_File sitemap.asp
 	Update_File shared-jy.tar.gz
@@ -1571,11 +1582,11 @@ Menu_Install(){
 	Update_File sc.func
 	Update_File S99tailtop
 	Update_File S95tailtaintdns
-	
+
 	Clear_Lock
-	
+
 	Download_File "$SCRIPT_REPO/LICENSE" "$SCRIPT_DIR/LICENSE"
-	
+
 	ScriptHeader
 	MainMenu
 }
@@ -1583,21 +1594,21 @@ Menu_Install(){
 Menu_Startup(){
 	Create_Dirs
 	Auto_Startup create 2>/dev/null
-	
+
 	NTP_Ready
-	
+
 	Check_Lock
-	
+
 	if [ "$1" != "force" ]; then
 		sleep 14
 	fi
-	
+
 	Create_Symlinks
 	Auto_ServiceEvent create 2>/dev/null
 	Shortcut_Script create
-	
+
 	"$SCRIPT_DIR/S99tailtop" start >/dev/null 2>&1
-	
+
 	Mount_WebUI
 	Clear_Lock
 }
@@ -1612,7 +1623,7 @@ Menu_Uninstall(){
 	Auto_ServiceEvent delete 2>/dev/null
 	NTPBootWatchdog disable
 	TailTaintDns disable
-	
+
 	LOCKFILE=/tmp/addonwebui.lock
 	FD=386
 	eval exec "$FD>$LOCKFILE"
@@ -1675,16 +1686,16 @@ Menu_Uninstall(){
 	fi
 	flock -u "$FD"
 	rm -rf "$SCRIPT_WEB_DIR" 2>/dev/null
-	
+
 	"$SCRIPT_DIR/S99tailtop" stop >/dev/null 2>&1
 	sleep 5
-		
+
 	rm -rf "$SCRIPT_DIR"
-	
+
 	SETTINGSFILE="/jffs/addons/custom_settings.txt"
 	sed -i '/scmerlin_version_local/d' "$SETTINGSFILE"
 	sed -i '/scmerlin_version_server/d' "$SETTINGSFILE"
-	
+
 	rm -f "/jffs/scripts/$SCRIPT_NAME_LOWER" 2>/dev/null
 	Clear_Lock
 	Print_Output true "Uninstall completed" "$PASS"
