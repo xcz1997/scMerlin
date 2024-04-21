@@ -145,7 +145,7 @@ function service_status(servicename){
 	$j.ajax({
 		url: '/ext/scmerlin/detect_service.js',
 		dataType: 'script',
-		error:	function(xhr){
+		error: function(xhr){
 			setTimeout(service_status,1000,servicename);
 		},
 		success: function(){
@@ -732,6 +732,9 @@ function Draw_Chart_NoData(txtchartname,txtmessage){
 	ctx.restore();
 }
 
+/**----------------------------------------**/
+/** Modified by Martinski W. [2024-Apr-21] **/
+/**----------------------------------------**/
 function Draw_Chart(txtchartname){
 	var chartData = [];
 	var chartLabels = [];
@@ -760,15 +763,15 @@ function Draw_Chart(txtchartname){
 		chartTitle = 'NVRAM Usage';
 		chartUnit = 'KB';
 	}
-	else if(txtchartname == 'jffsUsage'){
-		var jffs_usage = mem_stats_arr[7].split(' ');
-		chartData = [jffs_usage[0]*1,jffs_usage[2]*1-jffs_usage[0]*1];
+	else if(txtchartname == 'jffsUsage')
+	{
+		chartData = [jffs_Used,jffs_Free];
 		chartLabels = ['Used','Free'];
 		chartColours = ['#135fee','#1aa658'];
 		chartTitle = 'JFFS Usage';
 		chartUnit = 'MB';
 	}
-	
+
 	var objchartname = window['Chart'+txtchartname];
 	
 	if(objchartname != undefined) objchartname.destroy();
