@@ -37,11 +37,5 @@ If this does not work, you will need to use the full path:
 /jffs/scripts/scmerlin
 ```
 
-## Screenshots
-
-![WebUI](https://puu.sh/HLbzj/a8d2b5b15e.png)
-
-![CLI UI](https://puu.sh/HKZbb/a85852adea.png)
-
 ## Help
 Please post about any issues and problems here: [Asuswrt-Merlin AddOns on SNBForums](https://www.snbforums.com/forums/asuswrt-merlin-addons.60/?prefix_id=23)
