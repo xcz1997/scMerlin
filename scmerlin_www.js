@@ -4,7 +4,7 @@ var sortdirproc = 'desc';
 var arraycronjobs = [];
 var sortnamecron = 'Name';
 var sortdircron = 'asc';
-var tout;
+var tmout=null;
 
 Chart.defaults.global.defaultFontColor = '#CCC';
 Chart.Tooltip.positioners.cursor = function(chartElements,coordinates){
@@ -24,7 +24,11 @@ var srvnamevisiblelist = [true,false,true,false,true,false,false,true];
 
 var sortedAddonPages = [];
 
-function initial(){
+/**----------------------------------------**/
+/** Modified by Martinski W. [2024-Apr-29] **/
+/**----------------------------------------**/
+function initial()
+{
 	SetCurrentPage();
 	LoadCustomSettings();
 	show_menu();
@@ -62,7 +66,9 @@ function initial(){
 	setTimeout(load_addonpages,5000);
 	setTimeout(get_cronlist_file,5000);
 	get_proclist_file();
-	get_ntpwatchdogenabled_file();
+	Get_NTPWatchdogEnabled_File();
+	Get_NTPReadyCheck_Option();
+	Get_DNSmasqWatchdogEnabled_File();
 	update_temperatures();
 	update_sysinfo();
 	ScriptUpdateLayout();
@@ -127,7 +133,7 @@ function DoUpdate(){
 	document.form.action_script.value = 'start_scmerlindoupdate';
 	document.form.action_wait.value = 15;
 	$j('#auto_refresh').prop('checked',false);
-	clearTimeout(tout);
+	if (tmout != null) clearTimeout(tmout);
 	showLoading();
 	document.form.submit();
 }
@@ -274,17 +280,341 @@ function BuildSortTableHtml(type) {
 	return tablehtml;
 }
 
-function get_ntpwatchdogenabled_file(){
+/**----------------------------------------**/
+/** Modified by Martinski W. [2024-Apr-29] **/
+/**----------------------------------------**/
+function Get_NTPWatchdogEnabled_File()
+{
 	$j.ajax({
 		url: '/ext/scmerlin/watchdogenabled.htm',
 		dataType: 'text',
-		error: function(xhr){
-			document.form.scmerlin_ntpwatchdog.value = 'disable';
+		error: function(xhr)
+		{
+			document.form.scMerlin_NTPwatchdog.value = 'Disable';
+			$j('#scMerlin_NTPwatchdog_Status').text('Currently: DISABLED');
 		},
-		success: function(data){
-			document.form.scmerlin_ntpwatchdog.value = 'enable';
+		success: function(data)
+		{
+			document.form.scMerlin_NTPwatchdog.value = 'Enable';
+			$j('#scMerlin_NTPwatchdog_Status').text('Currently: ENABLED');
 		}
 	});
+}
+
+/**----------------------------------------**/
+/** Modified by Martinski W. [2024-Apr-29] **/
+/**----------------------------------------**/
+function Save_NTPWatchdog()
+{
+	document.form.action_script.value = 'start_scmerlin_NTPwatchdog' + document.form.scMerlin_NTPwatchdog.value;
+	document.form.action_wait.value = 4;
+	$j('#auto_refresh').prop('checked',false);
+	if (tmout != null) clearTimeout(tmout);
+	showLoading();
+	document.form.submit();
+	setTimeout(Get_NTPWatchdogEnabled_File, 4000);
+}
+
+/**-------------------------------------**/
+/** Added by Martinski W. [2024-Apr-29] **/
+/**-------------------------------------**/
+function Get_DNSmasqWatchdogEnabled_File()
+{
+	$j.ajax({
+		url: '/ext/scmerlin/tailtaintdnsenabled.htm',
+		dataType: 'text',
+		error: function(xhr)
+		{
+			document.form.scMerlin_DNSmasqWatchdog.value = 'Disable';
+			$j('#scMerlin_DNSmasqWatchdog_Status').text('Currently: DISABLED');
+		},
+		success: function(data)
+		{
+			document.form.scMerlin_DNSmasqWatchdog.value = 'Enable';
+			$j('#scMerlin_DNSmasqWatchdog_Status').text('Currently: ENABLED');
+		}
+	});
+}
+
+/**-------------------------------------**/
+/** Added by Martinski W. [2024-Apr-29] **/
+/**-------------------------------------**/
+function Save_DNSmasqWatchdog()
+{
+	document.form.action_script.value = 'start_scmerlin_DNSmasqWatchdog' + document.form.scMerlin_DNSmasqWatchdog.value;
+	document.form.action_wait.value = 4;
+	$j('#auto_refresh').prop('checked',false);
+	if (tmout != null) clearTimeout(tmout);
+	showLoading();
+	document.form.submit();
+	setTimeout(Get_DNSmasqWatchdogEnabled_File, 4000);
+}
+
+/**-------------------------------------**/
+/** Added by Martinski W. [2024-Apr-28] **/
+/**-------------------------------------**/
+const WaitMsgPopupBox=
+{
+   waitCounter: 0, waitMaxSecs: 0,
+   waitTimerOn: false,
+   waitTimerID: null,
+   waitMsgBox:  null,
+   waitMsgTemp:  '',
+   waitMsgBoxID: 'myWaitMsgPopupBoxID',
+
+   CloseMsg: function()
+   {
+      this.waitTimerOn = false;
+      this.waitCounter = 0;
+      this.waitMaxSecs = 0;
+      this.waitMsgTemp = '';
+      if (this.waitTimerID != null)
+      {
+         clearTimeout (this.waitTimerID);
+         this.waitTimerID = null;
+      }
+      if (this.waitMsgBox != null)
+      { this.waitMsgBox.close(); }
+   },
+
+   StartMsg: function (waitMsg, msSecsWaitMax, showCounter)
+   {
+      if (this.waitTimerOn) { return; }
+      this.waitTimerOn = true;
+      this.waitCounter = 0;
+      this.waitMsgTemp = '';
+      this.waitMaxSecs = Math.round(msSecsWaitMax / 1000);
+      this.ShowTimedMsg (waitMsg, showCounter);
+   },
+
+   ShowTimedMsg: function (waitMsg, showCounter)
+   {
+      if (this.waitCounter > this.waitMaxSecs) { this.CloseMsg() ; return; }
+      else if (! this.waitTimerOn) { return; }
+
+      this.waitMsgBox = document.getElementById(this.waitMsgBoxID);
+      if (this.waitMsgBox == null)
+      {
+         this.waitMsgBox = document.body.appendChild (document.createElement("dialog"));
+         this.waitMsgBox.setAttribute("id", this.waitMsgBoxID);
+      }
+      let msSecsWaitInterval = 1000;
+      let theWaitCounter = (this.waitCounter + 1);
+      if (this.waitCounter == 0) { this.waitMsgBox.close(); }
+
+      if (! showCounter)
+      {
+         if (this.waitCounter == 0)
+         { this.waitMsgTemp = waitMsg + "\n >"; }
+         else
+         { this.waitMsgTemp = this.waitMsgTemp + ">"; }
+         this.waitMsgBox.innerText = this.waitMsgTemp;
+      }
+      else if (showCounter)
+      {
+         this.waitMsgBox.innerText = waitMsg + ` [${theWaitCounter}]`;
+      }
+      if (this.waitCounter == 0) { this.waitMsgBox.showModal(); }
+      this.waitCounter = theWaitCounter;
+      this.waitTimerID = setTimeout (function () 
+           { WaitMsgPopupBox.ShowTimedMsg (waitMsg, showCounter); }, msSecsWaitInterval);
+   },
+
+   ShowMsg: function (waitMsg, msSecsWait)
+   {
+      this.waitMsgBox = document.getElementById(this.waitMsgBoxID);
+      if (this.waitMsgBox == null)
+      {
+         this.waitMsgBox = document.body.appendChild (document.createElement("dialog"));
+         this.waitMsgBox.setAttribute("id", this.waitMsgBoxID);
+      }
+      this.waitMsgBox.close();
+      this.waitMsgBox.innerText = waitMsg;
+      this.waitMsgBox.showModal();
+      setTimeout (function () { WaitMsgPopupBox.waitMsgBox.close(); }, msSecsWait);
+   }
+};
+
+/**-------------------------------------**/
+/** Added by Martinski W. [2024-Apr-28] **/
+/**-------------------------------------**/
+const AlertMsgBox=
+{
+   alertMsgBox: null,
+   alertMsgBoxID: 'myAlertMsgPopupBoxID',
+   BuildAlertBox: function (theAlertMsg)
+   {
+       let htmlCode;
+       const alertMsgList = theAlertMsg.split('\n');
+
+       htmlCode = '<div name="alertMsgBox" id="myAlertMsgBox">'
+                + '<div class = "message">';
+       for (var indx = 0; indx < alertMsgList.length; indx++)
+       { htmlCode += '<p>' + alertMsgList[indx] + '</p>'; }
+       htmlCode += '</div>'
+                + '<div style="text-align:center">'
+                + '<button class="button_gen" id="myAlertBoxOKButton"'
+                + ' style="margin-top:15px;"'
+                + ' onclick="AlertMsgBox.CloseAlert();">OK</button>'
+                + '</div></div>';
+
+       return (htmlCode);
+   },
+   CloseAlert: function()
+   {
+      if (this.alertMsgBox != null) { this.alertMsgBox.close(); }
+   },
+   ShowAlert: function (theAlertMsg)
+   {
+      this.alertMsgBox = document.getElementById(this.alertMsgBoxID);
+      if (this.alertMsgBox == null)
+      {
+          this.alertMsgBox = document.body.appendChild (document.createElement("dialog"));
+          this.alertMsgBox.setAttribute("id", this.alertMsgBoxID);
+      }
+      this.alertMsgBox.close();
+      this.alertMsgBox.innerHTML = this.BuildAlertBox (theAlertMsg);
+      this.alertMsgBox.showModal();
+   }
+};
+
+/**-------------------------------------**/
+/** Added by Martinski W. [2024-Apr-28] **/
+/**-------------------------------------**/
+var theButtonBackStyle = null;
+function SetButtonGenState (buttonID, enableState, hintMsg)
+{
+   if (enableState)
+   {
+       document.getElementById(buttonID).disabled = false;
+       document.getElementById(buttonID).title = hintMsg;
+       if (theButtonBackStyle != null)
+       { document.getElementById(buttonID).style.background = theButtonBackStyle; }
+   }
+   else
+   {
+       if (document.getElementById(buttonID).disabled == false)
+       { theButtonBackStyle = document.getElementById(buttonID).style.background; }
+       document.getElementById(buttonID).disabled = true;
+       document.getElementById(buttonID).title = hintMsg;
+       document.getElementById(buttonID).style.background = "grey";
+   }
+}
+
+function SetNTPReadyCheckButtonState (enableState, theWaitMsg)
+{
+   let hintMsg;
+   if (enableState)
+   { hintMsg = NTPReadyCheck.buttonHintMsg; }
+   else
+   { hintMsg = theWaitMsg; }
+   SetButtonGenState ('btnSaveNTPcheck', enableState, hintMsg);
+}
+
+/**-------------------------------------**/
+/** Added by Martinski W. [2024-Apr-28] **/
+/**-------------------------------------**/
+function Get_NTPReadyCheck_Option()
+{
+	$j.ajax({
+		url: '/ext/scmerlin/NTP_Ready_Config.htm',
+		dataType: 'text',
+		error: function(xhr)
+		{
+			document.form.scMerlin_NTPcheck.value = 'Disable';
+			NTPReadyCheck.prevOptionValue = 'DISABLED';
+			WaitMsgPopupBox.CloseMsg();
+			SetNTPReadyCheckButtonState (true, null);
+			$j('#scMerlin_NTPcheck_Status').text('Currently: DISABLED');
+		},
+		success: function(data)
+		{
+			let settings = data.split('\n');
+			settings = settings.filter(Boolean);
+			let linesCount = settings.length;
+			let matchedStr, commentStart, theMsg='';
+			let theSetting, settingName, theCheckSetting;
+
+			for (var cnt = 0; cnt < linesCount; cnt++)
+			{
+			    matchedStr = settings[cnt].match(/^NTP_Ready_Check=/);
+			    commentStart = settings[cnt].indexOf('#');
+			    if (commentStart != -1 || matchedStr == null)
+			    { continue; }
+			    theSetting = settings[cnt].split('=');
+			    settingName = theSetting[0];
+			    theCheckSetting = theSetting[1];
+			    if (theCheckSetting == 'ENABLED')
+			    { document.form.scMerlin_NTPcheck.value = 'Enable'; }
+			    else
+			    { document.form.scMerlin_NTPcheck.value = 'Disable'; }
+			}
+
+			if (theCheckSetting == 'ENABLED')
+			{
+			    if (NTPReadyCheck.showCompletedMsg)
+			    { theMsg = NTPReadyCheck.enabledDoneMsg; }
+			}
+			else if (theCheckSetting == 'DISABLED')
+			{
+			    if (NTPReadyCheck.prevSetting == 'ENABLED' &&
+			        NTPReadyCheck.showWarningAlert)
+			    {
+			        theMsg = NTPReadyCheck.disabledAlertMsg;
+			    }
+			    else if (NTPReadyCheck.prevSetting == 'DISABLED' &&
+			             NTPReadyCheck.showCompletedMsg)
+			    {
+			        theMsg = NTPReadyCheck.disabledDoneMsg;
+			    }
+			}
+			$j('#scMerlin_NTPcheck_Status').text('Currently: ' + theCheckSetting);
+			WaitMsgPopupBox.CloseMsg();
+			if (theMsg != '') { AlertMsgBox.ShowAlert (theMsg); }
+			SetNTPReadyCheckButtonState (true, null);
+			NTPReadyCheck.prevSetting = theCheckSetting;
+			NTPReadyCheck.showCompletedMsg = false;
+			NTPReadyCheck.showWarningAlert = false;
+		}
+	});
+}
+
+/**-------------------------------------**/
+/** Added by Martinski W. [2024-Apr-28] **/
+/**-------------------------------------**/
+function Save_NTPReadyCheck_Option()
+{
+   let theTimeout = 0, theWaitMsg = '';
+   let theCheckSetting = document.form.scMerlin_NTPcheck.value;
+   let actionScriptVal = 'start_scmerlin_NTPcheck' + theCheckSetting;
+
+   if (theCheckSetting == 'Enable')
+   {
+       NTPReadyCheck.nextSetting = 'ENABLED'; 
+       theWaitMsg = NTPReadyCheck.waitToEnableMsg;
+   }
+   else
+   {
+       NTPReadyCheck.nextSetting = 'DISABLED';
+       theWaitMsg = NTPReadyCheck.waitToDisableMsg;
+   }
+   NTPReadyCheck.showCompletedMsg = true;
+
+   if (NTPReadyCheck.prevSetting == NTPReadyCheck.nextSetting)
+   {
+       theTimeout = 2000;
+       NTPReadyCheck.showWarningAlert = false;
+   }
+   else
+   {
+       theTimeout = 4000;
+       NTPReadyCheck.showWarningAlert = true;
+   }
+   SetNTPReadyCheckButtonState (false, theWaitMsg);
+   WaitMsgPopupBox.StartMsg (theWaitMsg, 8000, false);
+   document.formScriptActions.action_script.value = actionScriptVal;
+   document.formScriptActions.submit();
+   setTimeout(Get_NTPReadyCheck_Option, theTimeout);
 }
 
 function load_addonpages(){
@@ -331,7 +661,7 @@ function get_cronlist_file(){
 		url: '/ext/scmerlin/scmcronjobs.htm',
 		dataType: 'text',
 		error: function(xhr){
-			tout = setTimeout(get_cronlist_file,1000);
+			tmout = setTimeout(get_cronlist_file,1000);
 		},
 		success: function(data){
 			ParseCronJobs(data);
@@ -370,12 +700,12 @@ function get_proclist_file(){
 		url: '/ext/scmerlin/top.htm',
 		dataType: 'text',
 		error: function(xhr){
-			tout = setTimeout(get_proclist_file,1000);
+			tmout = setTimeout(get_proclist_file,1000);
 		},
 		success: function(data){
 			ParseProcList(data);
 			if(document.getElementById('auto_refresh').checked){
-				tout = setTimeout(get_proclist_file,5000);
+				tmout = setTimeout(get_proclist_file,5000);
 			}
 		}
 	});
@@ -567,7 +897,7 @@ function ToggleRefresh(){
 		get_proclist_file();
 	}
 	else{
-		clearTimeout(tout);
+		if (tmout != null) clearTimeout(tmout);
 	}
 }
 
@@ -855,13 +1185,4 @@ function Draw_Chart(txtchartname){
 		data: chartDataset
 	});
 	window['Chart'+txtchartname] = objchartname;
-}
-
-function SaveConfig(){
-	document.form.action_script.value = 'start_scmerlinconfig'+document.form.scmerlin_ntpwatchdog.value;
-	document.form.action_wait.value = 10;
-	$j('#auto_refresh').prop('checked',false);
-	clearTimeout(tout);
-	showLoading();
-	document.form.submit();
 }
