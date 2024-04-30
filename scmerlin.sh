@@ -11,7 +11,7 @@
 ##       https://github.com/jackyaz/scMerlin        ##
 ##                                                  ##
 ######################################################
-# Last Modified: 2024-Apr-21
+# Last Modified: 2024-Apr-29
 #-----------------------------------------------------
 
 ##########       Shellcheck directives     ###########
@@ -26,8 +26,8 @@
 ### Start of script variables ###
 readonly SCRIPT_NAME="scMerlin"
 readonly SCRIPT_NAME_LOWER="$(echo "$SCRIPT_NAME" | tr 'A-Z' 'a-z' | sed 's/d//')"
-readonly SCM_VERSION="v2.5.2"
-readonly SCRIPT_VERSION="v2.5.2"
+readonly SCM_VERSION="v2.5.3"
+readonly SCRIPT_VERSION="v2.5.3"
 SCRIPT_BRANCH="master"
 SCRIPT_REPO="https://raw.githubusercontent.com/decoderman/$SCRIPT_NAME/$SCRIPT_BRANCH"
 readonly SCRIPT_DIR="/jffs/addons/$SCRIPT_NAME_LOWER.d"
@@ -38,6 +38,15 @@ readonly SHARED_REPO="https://raw.githubusercontent.com/decoderman/shared-jy/mas
 readonly SHARED_WEB_DIR="$SCRIPT_WEBPAGE_DIR/shared-jy"
 readonly NTP_WATCHDOG_FILE="$SCRIPT_DIR/.watchdogenabled"
 readonly TAIL_TAINTED_FILE="$SCRIPT_DIR/.tailtaintdnsenabled"
+
+##-------------------------------------##
+## Added by Martinski W. [2024-Apr-28] ##
+##-------------------------------------##
+readonly NTP_READY_CHECK_KEYN="NTP_Ready_Check"
+readonly NTP_READY_CHECK_FILE="NTP_Ready_Config"
+readonly NTP_READY_CHECK_CONF="$SCRIPT_DIR/$NTP_READY_CHECK_FILE"
+isInteractiveMenuMode=false
+
 [ -z "$(nvram get odmpid)" ] && ROUTER_MODEL=$(nvram get productid) || ROUTER_MODEL=$(nvram get odmpid)
 ### End of script variables ###
 
@@ -49,6 +58,16 @@ readonly PASS="\\e[32m"
 readonly BOLD="\\e[1m"
 readonly SETTING="${BOLD}\\e[36m"
 readonly CLEARFORMAT="\\e[0m"
+
+##-------------------------------------##
+## Added by Martinski W. [2024-Apr-28] ##
+##-------------------------------------##
+readonly REDct="\033[1;31m\033[1m"
+readonly GRNct="\033[1;32m\033[1m"
+readonly YLWct="\033[1;33m\033[1m"
+readonly CLEARct="\033[0m"
+readonly BOLDUNDERLN="\033[1;4m"
+
 ### End of output format variables ###
 
 ##----------------------------------------------##
@@ -390,7 +409,7 @@ Update_File(){
 			fi
 			Download_File "$SCRIPT_REPO/$1" "$SCRIPT_DIR/$1"
 			chmod 0755 "$SCRIPT_DIR/$1"
-			if [ "$(NTPBootWatchdog check)" = "ENABLED" ]; then
+			if [ "$(NTP_BootWatchdog status)" = "ENABLED" ]; then
 				"$SCRIPT_DIR/S95tailtaintdns" start >/dev/null 2>&1
 			fi
 			Print_Output true "New version of $1 downloaded" "$PASS"
@@ -406,7 +425,7 @@ Update_File(){
 			fi
 			Download_File "$SCRIPT_REPO/$1" "$SCRIPT_DIR/$1"
 			chmod 0755 "$SCRIPT_DIR/$1"
-			if [ "$(NTPBootWatchdog check)" = "ENABLED" ]; then
+			if [ "$(NTP_BootWatchdog status)" = "ENABLED" ]; then
 				"$SCRIPT_DIR/S95tailtaintdns" start >/dev/null 2>&1
 			fi
 			Print_Output true "New version of $1 downloaded" "$PASS"
@@ -452,7 +471,11 @@ Create_Dirs(){
 	fi
 }
 
-Create_Symlinks(){
+##----------------------------------------##
+## Modified by Martinski W. [2024-Apr-28] ##
+##----------------------------------------##
+Create_Symlinks()
+{
 	rm -rf "${SCRIPT_WEB_DIR:?}/"* 2>/dev/null
 
 	ln -s /tmp/scmerlin-top "$SCRIPT_WEB_DIR/top.htm" 2>/dev/null
@@ -460,6 +483,7 @@ Create_Symlinks(){
 	ln -s /tmp/scmcronjobs.tmp "$SCRIPT_WEB_DIR/scmcronjobs.htm" 2>/dev/null
 
 	ln -s "$NTP_WATCHDOG_FILE" "$SCRIPT_WEB_DIR/watchdogenabled.htm" 2>/dev/null
+	ln -s "$NTP_READY_CHECK_CONF" "$SCRIPT_WEB_DIR/${NTP_READY_CHECK_FILE}.htm" 2>/dev/null
 	ln -s "$TAIL_TAINTED_FILE" "$SCRIPT_WEB_DIR/tailtaintdnsenabled.htm" 2>/dev/null
 
 	if [ ! -d "$SHARED_WEB_DIR" ]; then
@@ -826,19 +850,21 @@ EOF
 	Print_Output true "Mounted $SCRIPT_NAME WebUI page as $realpage" "$PASS"
 }
 
-Get_Cron_Jobs(){
+Get_Cron_Jobs()
+{
 	printf "%-27s┌────────── minute (0 - 59)\\n" " "
-	printf "%-27s│%-6s┌──────── hour (0 - 23)\\n" " " " "
-	printf "%-27s│%-6s│%-6s┌────── day of month (1 - 31)\\n" " " " " " "
-	printf "%-27s│%-6s│%-6s│%-6s┌──── month (1 - 12)\\n" " " " " " " " "
-	printf "%-27s│%-6s│%-6s│%-6s│%-6s┌── day of week (0 - 6 => Sunday - Saturday)\\n" " " " " " " " " " "
-	printf "%-27s│%-6s│%-6s│%-6s│%-6s│\\n" " " " " " " " " " "
-	printf "%-27s↓%-6s↓%-6s↓%-6s↓%-6s↓\\n" " " " " " " " " " "
-	printf "${BOLD}%-25s %-6s %-6s %-6s %-6s %-9s %s${CLEARFORMAT}\\n" "Cron job name" "Min" "Hour" "DayM" "Month" "DayW" "Command"
+	printf "%-27s│%-8s┌──────── hour (0 - 23)\\n" " " " "
+	printf "%-27s│%-8s│%-8s┌────── day of month (1 - 31)\\n" " " " " " "
+	printf "%-27s│%-8s│%-8s│%-8s┌──── month (1 - 12)\\n" " " " " " " " "
+	printf "%-27s│%-8s│%-8s│%-8s│%-8s┌── day of week (0 - 6 => Sunday - Saturday)\\n" " " " " " " " " " "
+	printf "%-27s│%-8s│%-8s│%-8s│%-8s│\\n" " " " " " " " " " "
+	printf "%-27s↓%-8s↓%-8s↓%-8s↓%-8s↓\\n" " " " " " " " " " "
+	printf "${GRNct}%-25s %-8s %-8s %-8s %-8s %-9s %s${CLEARFORMAT}\n" \
+	"Cron job name" "Min" "Hour" "DayM" "Month" "DayW" "Command"
 	cru l | sed 's/,/|/g' | awk 'FS="#" {printf "%s %s\n",$2,$1}' | awk '{printf "\"%s\",\"%s\",\"%s\",\"%s\",\"%s\",\"%s\",\"",$1,$2,$3,$4,$5,$6;for(i=7; i<=NF; ++i) printf "%s ", $i; print "\""}' | sed 's/ "$/"/g' > /tmp/scmcronjobs.tmp
-	cronjobs="$(cru l | awk 'FS="#" {printf "%s %s\n",$2,$1}' | awk '{printf "%-25s %-6s %-6s %-6s %-6s %-10s",$1,$2,$3,$4,$5,$6;for(i=7; i<=NF; ++i) printf "%s ", $i; print ""}')"
+	cronjobs="$(cru l | awk 'FS="#" {printf "%s %s\n",$2,$1}' | awk '{printf "%-25s %-8s %-8s %-8s %-8s %-10s",$1,$2,$3,$4,$5,$6;for(i=7; i<=NF; ++i) printf "%s ", $i; print ""}')"
 	echo "$cronjobs"
-	}
+}
 
 Get_Addon_Pages(){
 	urlpage=""
@@ -867,29 +893,95 @@ Get_Addon_Pages(){
 	grep "user.*\.asp" /tmp/menuTree.js | awk -F'"' -v wu="$weburl" '{printf "%s,"wu"%s\n",$4,$2}' > /tmp/addonwebpages.tmp
 }
 
-NTPBootWatchdog(){
+##-------------------------------------##
+## Added by Martinski W. [2024-Apr-28] ##
+##-------------------------------------##
+_WaitForConfirmation_()
+{
+   ! "$isInteractiveMenuMode" && return 0
+   local promptStr
+
+   if [ $# -eq 0 ] || [ -z "$1" ]
+   then promptStr=" [yY|nN] N? "
+   else promptStr="$1 [yY|nN] N? "
+   fi
+
+   printf "$promptStr" ; read -rn 3 YESorNO
+   if echo "$YESorNO" | grep -qE "^([Yy](es)?)$"
+   then echo "OK" ; return 0
+   else echo "NO" ; return 1
+   fi
+}
+
+##-------------------------------------##
+## Added by Martinski W. [2024-Apr-29] ##
+##-------------------------------------##
+NTP_ReadyCheckOption()
+{
+	case "$1" in
+		enable)
+			echo "${NTP_READY_CHECK_KEYN}=ENABLED" > "$NTP_READY_CHECK_CONF" ;;
+		disable)
+			if "$isInteractiveMenuMode"
+			then
+			    printf "${REDct}**${YLWct}WARNING${REDct}**${CLEARct}\n"
+			    printf "You're about to disable the \"NTP Ready\" check. This is generally not recommended\n"
+			    printf "unless you have some very specific conditions (e.g. WAN state is not connected).\n"
+			    printf "Remember to re-enable the \"NTP Ready\" check as soon as you possibly can.\n\n"
+			    if ! _WaitForConfirmation_ "Proceed to ${REDct}DISABLE${CLEARct} the 'NTP Ready' check"
+			    then return 1 ; fi
+			fi
+			echo "${NTP_READY_CHECK_KEYN}=DISABLED" > "$NTP_READY_CHECK_CONF"
+			;;
+		delete)
+			rm -f "$NTP_READY_CHECK_CONF" ;;
+		status)
+			[ ! -f "$NTP_READY_CHECK_CONF" ] && \
+			NTP_ReadyCheckOption enable
+
+			if [ -f "$NTP_READY_CHECK_CONF" ] && \
+			    grep -qE "^${NTP_READY_CHECK_KEYN}=ENABLED$" "$NTP_READY_CHECK_CONF"
+			then
+			    echo "ENABLED"
+			else
+			    echo "DISABLED"
+			fi
+		;;
+	esac
+}
+
+##----------------------------------------##
+## Modified by Martinski W. [2024-Apr-28] ##
+##----------------------------------------##
+NTP_BootWatchdog()
+{
 	case "$1" in
 		enable)
 			touch "$NTP_WATCHDOG_FILE"
 			cat << "EOF" > /jffs/scripts/ntpbootwatchdog.sh
 #!/bin/sh
-if [ "$(nvram get ntp_ready)" -eq 1 ]; then
+# ntpbootwatchdog.sh (created by scMerlin).
+#
+if [ "$(nvram get ntp_ready)" -eq 1 ]
+then
 	/usr/bin/logger -st ntpbootwatchdog "NTP is synced, exiting"
 else
 	/usr/bin/logger -st ntpbootwatchdog "NTP boot watchdog started..."
-	ntptimer=0
-	while [ "$(nvram get ntp_ready)" -eq 0 ] && [ "$ntptimer" -lt 600 ]; do
-		if [ "$ntptimer" -ne 0 ]; then
-			/usr/bin/logger -st ntpbootwatchdog "Still waiting for NTP to sync..."
+	ntpTimerSecs=0
+	while [ "$(nvram get ntp_ready)" -eq 0 ] && [ "$ntpTimerSecs" -lt 600 ]
+	do
+		if [ "$ntpTimerSecs" -gt 0 ] && [ "$((ntpTimerSecs % 30))" -eq 0 ]
+		then
+			/usr/bin/logger -st ntpbootwatchdog "Still waiting for NTP to sync [$ntpTimerSecs secs]..."
+			killall ntp
+			killall ntpd
+			service restart_ntpd
 		fi
-		killall ntp
-		killall ntpd
-		service restart_ntpd
-		ntptimer=$((ntptimer+30))
-		sleep 30
+		sleep 10
+		ntpTimerSecs="$((ntpTimerSecs + 10))"
 	done
 
-	if [ "$ntptimer" -ge 600 ]; then
+	if [ "$ntpTimerSecs" -ge 600 ]; then
 		/usr/bin/logger -st ntpbootwatchdog "NTP failed to sync after 10 minutes - please check immediately!"
 		exit 1
 	else
@@ -932,8 +1024,10 @@ EOF
 				fi
 			fi
 		;;
-		check)
-			if [ -f /jffs/scripts/ntpbootwatchdog.sh ] && [ "$(grep -i -c '# '"$SCRIPT_NAME" /jffs/scripts/init-start)" -gt 0 ]; then
+		status)
+			if [ -f /jffs/scripts/ntpbootwatchdog.sh ] && \
+			   [ "$(grep -i -c '# '"$SCRIPT_NAME" /jffs/scripts/init-start)" -gt 0 ]
+			then
 				echo "ENABLED"
 			else
 				echo "DISABLED"
@@ -942,7 +1036,11 @@ EOF
 	esac
 }
 
-TailTaintDns(){
+##----------------------------------------##
+## Modified by Martinski W. [2024-Apr-29] ##
+##----------------------------------------##
+TailTaintDNSmasq()
+{
 	case "$1" in
 		enable)
 			touch "$TAIL_TAINTED_FILE"
@@ -976,8 +1074,10 @@ TailTaintDns(){
 				fi
 			fi
 		;;
-		check)
-			if [ -f "$TAIL_TAINTED_FILE" ] && [ "$(grep -i -c '# '"$SCRIPT_NAME - tailtaintdns" /jffs/scripts/services-start)" -gt 0 ]; then
+		status)
+			if [ -f "$TAIL_TAINTED_FILE" ] && \
+			   [ "$(grep -i -c '# '"$SCRIPT_NAME - tailtaintdns" /jffs/scripts/services-start)" -gt 0 ]
+			then
 				echo "ENABLED"
 			else
 				echo "DISABLED"
@@ -1055,6 +1155,60 @@ PressEnter(){
 	return 0
 }
 
+##-------------------------------------##
+## Added by Martinski W. [2024-Apr-28] ##
+##-------------------------------------##
+Get_JFFS_Usage()
+{
+   if [ -z "$(mount | grep '/jffs')" ]
+   then
+       printf "JFFS is NOT found mounted." ; return 1
+   fi
+   _GetNum_() { printf "%.2f" "$(echo "$1" | awk "{print $1}")" ; }
+   local jffsInfoStr  total  usedx  freex
+   printf "\n${GRNct}${BOLDUNDERLN}JFFS${CLEARFORMAT}\n"
+   df -kT | grep -E '^Filesystem[[:blank:]]+'
+   jffsInfoStr="$(df -kT | grep -E '[[:blank:]]+/jffs$')"
+   echo "$jffsInfoStr"
+   total="$(echo "$jffsInfoStr" | awk -F ' ' '{print $3}')"
+   usedx="$(echo "$jffsInfoStr" | awk -F ' ' '{print $4}')"
+   freex="$(echo "$jffsInfoStr" | awk -F ' ' '{print $5}')"
+   echo
+   printf "JFFS Used:  %6d KB = %5.2f MB [%4.1f%%]\n" \
+          "$usedx" "$(_GetNum_ "($usedx / 1024)")" "$(_GetNum_ "($usedx * 100 / $total)")"
+   printf "JFFS Free:  %6d KB = %5.2f MB [%4.1f%%]\n" \
+          "$freex" "$(_GetNum_ "($freex / 1024)")" "$(_GetNum_ "($freex * 100 / $total)")"
+   printf "JFFS Total: %6d KB = %5.2f MB\n" \
+          "$total" "$(_GetNum_ "($total / 1024)")"
+}
+
+##-------------------------------------##
+## Added by Martinski W. [2024-Apr-28] ##
+##-------------------------------------##
+Get_NVRAM_Usage()
+{
+   _GetNum_() { printf "%.2f" "$(echo "$1" | awk "{print $1}")" ; }
+   local tempFile  nvramInfoStr  total  usedx  freex
+   printf "\n${GRNct}${BOLDUNDERLN}NVRAM${CLEARFORMAT}\n"
+   tempFile="${HOME}/nvramShow.txt"
+   nvram show 1>/dev/null 2>"$tempFile"
+   nvramInfoStr="$(cat "$tempFile")"
+   rm -f "$tempFile"
+   echo "$nvramInfoStr"
+   usedx="$(echo "$nvramInfoStr" | awk -F ' ' '{print $2}')"
+   freex="$(echo "$nvramInfoStr" | awk -F ' ' '{print $4}')"
+   freex="$(echo "$freex" | sed 's/[()]//g')"
+   total="$((usedx + freex))"
+   echo
+   printf "NVRAM Used:  %7d Bytes = %6.2f KB [%4.1f%%]\n" \
+          "$usedx" "$(_GetNum_ "($usedx / 1024)")" "$(_GetNum_ "($usedx * 100 / $total)")"
+   printf "NVRAM Free:  %7d Bytes = %6.2f KB [%4.1f%%]\n" \
+          "$freex" "$(_GetNum_ "($freex / 1024)")" "$(_GetNum_ "($freex * 100 / $total)")"
+   printf "NVRAM Total: %7d Bytes = %6.2f KB\n" \
+          "$total" "$(_GetNum_ "($total / 1024)")"
+   echo
+}
+
 ScriptHeader(){
 	clear
 	printf "\\n"
@@ -1074,9 +1228,18 @@ ScriptHeader(){
 	printf "\\n"
 }
 
-MainMenu(){
+##----------------------------------------##
+## Modified by Martinski W. [2024-Apr-28] ##
+##----------------------------------------##
+MainMenu()
+{
+	local NTP_WATCHDOG_STATUS=""  NTP_READY_CHECK_STATUS=""  TAILTAINT_DNS_STATUS=""
+	isInteractiveMenuMode=true
+
 	printf "WebUI for %s is available at:\\n${SETTING}%s${CLEARFORMAT}\\n\\n" "$SCRIPT_NAME" "$(Get_WebUI_URL)"
-	printf "${BOLD}\\e[4mServices${CLEARFORMAT}"
+
+	##---------- SERVICES ----------##
+	printf "${BOLDUNDERLN}Services${CLEARFORMAT}"
 	printf "${BOLD}${WARN} (selecting an option will restart the service)${CLEARFORMAT}\\n"
 	printf "1.    DNS/DHCP Server (dnsmasq)\\n"
 	printf "2.    Internet connection\\n"
@@ -1086,6 +1249,8 @@ MainMenu(){
 	printf "6.    Samba\\n"
 	printf "7.    DDNS client\\n"
 	printf "8.    Timeserver (ntpd/chronyd)\\n"
+
+	##---------- VPN CLIENTS ----------##
 	vpnclients="$(nvram show 2> /dev/null | grep "^vpn_client._addr")"
 	vpnclientenabled="false"
 	for vpnclient in $vpnclients; do
@@ -1094,7 +1259,7 @@ MainMenu(){
 		fi
 	done
 	if [ "$vpnclientenabled" = "true" ]; then
-		printf "\\n${BOLD}\\e[4mVPN Clients${CLEARFORMAT}"
+		printf "\\n${BOLDUNDERLN}VPN Clients${CLEARFORMAT}"
 		printf "${BOLD}${WARN} (selecting an option will restart the VPN Client)${CLEARFORMAT}\\n"
 		vpnclientnum=1
 		while [ "$vpnclientnum" -lt 6 ]; do
@@ -1102,13 +1267,15 @@ MainMenu(){
 			vpnclientnum=$((vpnclientnum + 1))
 		done
 	fi
+
+	##---------- VPN SERVERS ----------##
 	vpnservercount="$(nvram get vpn_serverx_start | awk '{n=split($0, array, ",")} END{print n-1 }')"
 	vpnserverenabled="false"
 	if [ "$vpnservercount" -gt 0 ]; then
 		vpnserverenabled="true"
 	fi
 	if [ "$vpnserverenabled" = "true" ]; then
-		printf "\\n${BOLD}\\e[4mVPN Servers${CLEARFORMAT}"
+		printf "\\n${BOLDUNDERLN}VPN Servers${CLEARFORMAT}"
 		printf "${BOLD}${WARN} (selecting an option will restart the VPN Server)${CLEARFORMAT}\\n"
 		vpnservernum=1
 		while [ "$vpnservernum" -lt 3 ]; do
@@ -1120,30 +1287,52 @@ MainMenu(){
 			vpnservernum=$((vpnservernum + 1))
 		done
 	fi
+
+	##---------- ENTWARE ----------##
 	if [ -f /opt/bin/opkg ]; then
-		printf "\\n${BOLD}\\e[4mEntware${CLEARFORMAT}\\n"
+		printf "\\n${BOLDUNDERLN}Entware${CLEARFORMAT}\\n"
 		printf "et.   Restart all Entware applications\\n"
 	fi
-	printf "\\n${BOLD}\\e[4mRouter${CLEARFORMAT}\\n"
-	printf "c.    View running processes\\n"
-	printf "m.    View RAM/memory usage\\n"
-	printf "cr.   View cron jobs\\n"
+
+	##---------- ROUTER ----------##
+	printf "\n${BOLDUNDERLN}Router${CLEARFORMAT}\n"
+	printf "c.    View running processes\n"
+	printf "m.    View RAM/memory usage\n"
+	printf "jn.   View internal storage usage [JFFS & NVRAM]\n"
+	printf "cr.   View cron jobs\n"
 	printf "t.    View router temperatures\n"
 	printf "w.    List Addon WebUI tab to page mapping\n"
-	printf "r.    Reboot router\\n\\n"
-	printf "${BOLD}\\e[4mOther${CLEARFORMAT}\\n"
-	if [ "$(NTPBootWatchdog check)" = "ENABLED" ]; then
-		NTPBW_ENABLED="${SETTING}Enabled"
+	printf "r.    Reboot router\n\n"
+
+	##---------- OTHER ----------##
+	printf "${BOLDUNDERLN}Other${CLEARFORMAT}\\n"
+	if [ "$(NTP_BootWatchdog status)" = "ENABLED" ]
+	then
+		NTP_WATCHDOG_STATUS="${GRNct}ENABLED${CLEARct}"
 	else
-		NTPBW_ENABLED="Disabled"
+		NTP_WATCHDOG_STATUS="${REDct}DISABLED${CLEARct}"
 	fi
-	printf "ntp.  Toggle NTP boot watchdog script\\n      Currently: ${BOLD}$NTPBW_ENABLED${CLEARFORMAT}\\n\\n"
-	if [ "$(TailTaintDns check)" = "ENABLED" ]; then
-		TAILTAINT_ENABLED="${SETTING}Enabled"
+	printf "ntp.  Toggle NTP boot watchdog script\n      Currently: ${NTP_WATCHDOG_STATUS}\n\n"
+
+	if [ "$(NTP_ReadyCheckOption status)" = "ENABLED" ]
+	then
+		NTP_READY_CHECK_STATUS="${GRNct}ENABLED${CLEARct}"
 	else
-		TAILTAINT_ENABLED="Disabled"
+		NTP_READY_CHECK_STATUS="${REDct}DISABLED${CLEARct}"
 	fi
-	printf "dns.  Toggle dnsmasq tainted watchdog script\\n      Currently: ${BOLD}$TAILTAINT_ENABLED${CLEARFORMAT}\\n\\n"
+	if [ "$(nvram get ntp_ready)" -eq 0 ]
+	then
+		NTP_READY_CHECK_STATUS="${NTP_READY_CHECK_STATUS} [${YLWct}*WARNING*${CLEARct}: NTP is ${REDct}NOT${CLEARct} synced]"
+	fi
+	printf "nrc.  Toggle NTP Ready startup check\n      Currently: ${NTP_READY_CHECK_STATUS}\n\n"
+
+	if [ "$(TailTaintDNSmasq status)" = "ENABLED" ]
+	then
+		TAILTAINT_DNS_STATUS="${GRNct}ENABLED${CLEARct}"
+	else
+		TAILTAINT_DNS_STATUS="${REDct}DISABLED${CLEARct}"
+	fi
+	printf "dns.  Toggle dnsmasq tainted watchdog script\n      Currently: ${TAILTAINT_DNS_STATUS}\n\n"
 	printf "u.    Check for updates\\n"
 	printf "uf.   Update %s with latest version (force update)\\n\\n" "$SCRIPT_NAME"
 	printf "e.    Exit %s\\n\\n" "$SCRIPT_NAME"
@@ -1384,6 +1573,13 @@ MainMenu(){
 				PressEnter
 				break
 			;;
+			jn)
+				ScriptHeader
+				Get_JFFS_Usage
+				Get_NVRAM_Usage
+				PressEnter
+				break
+			;;
 			cr)
 				ScriptHeader
 				Get_Cron_Jobs
@@ -1464,20 +1660,32 @@ MainMenu(){
 				break
 			;;
 			ntp)
-				printf "\\n"
-				if [ "$(NTPBootWatchdog check)" = "ENABLED" ]; then
-					NTPBootWatchdog disable
-				elif [ "$(NTPBootWatchdog check)" = "DISABLED" ]; then
-					NTPBootWatchdog enable
+				printf "\n"
+				NTP_WATCHDOG_STATUS="$(NTP_BootWatchdog status)"
+				if [ "$NTP_WATCHDOG_STATUS" = "ENABLED" ]
+				then NTP_BootWatchdog disable
+				elif [ "$NTP_WATCHDOG_STATUS" = "DISABLED" ]
+				then NTP_BootWatchdog enable
+				fi
+				break
+			;;
+			nrc)
+				printf "\n"
+				NTP_READY_CHECK_STATUS="$(NTP_ReadyCheckOption status)"
+				if [ "$NTP_READY_CHECK_STATUS" = "ENABLED" ]
+				then NTP_ReadyCheckOption disable
+				elif [ "$NTP_READY_CHECK_STATUS" = "DISABLED" ]
+				then NTP_ReadyCheckOption enable
 				fi
 				break
 			;;
 			dns)
-				printf "\\n"
-				if [ "$(TailTaintDns check)" = "ENABLED" ]; then
-					TailTaintDns disable
-				elif [ "$(TailTaintDns check)" = "DISABLED" ]; then
-					TailTaintDns enable
+				printf "\n"
+				TAILTAINT_DNS_STATUS="$(TailTaintDNSmasq status)"
+				if [ "$TAILTAINT_DNS_STATUS" = "ENABLED" ]
+				then TailTaintDNSmasq disable
+				elif [ "$TAILTAINT_DNS_STATUS" = "DISABLED" ]
+				then TailTaintDNSmasq enable
 				fi
 				break
 			;;
@@ -1549,7 +1757,8 @@ Check_Requirements(){
 	fi
 }
 
-Menu_Install(){
+Menu_Install()
+{
 	Print_Output true "Welcome to $SCRIPT_NAME $SCRIPT_VERSION, a script by JackYaz"
 	sleep 1
 
@@ -1565,10 +1774,10 @@ Menu_Install(){
 	fi
 
 	Create_Dirs
+	Create_Symlinks
 	Shortcut_Script create
 	Set_Version_Custom_Settings local "$SCRIPT_VERSION"
 	Set_Version_Custom_Settings server "$SCRIPT_VERSION"
-	Create_Symlinks
 	Auto_Startup create 2>/dev/null
 	Auto_ServiceEvent create 2>/dev/null
 
@@ -1591,21 +1800,24 @@ Menu_Install(){
 	MainMenu
 }
 
-Menu_Startup(){
+##----------------------------------------##
+## Modified by Martinski W. [2024-Apr-28] ##
+##----------------------------------------##
+Menu_Startup()
+{
 	Create_Dirs
+	Create_Symlinks
 	Auto_Startup create 2>/dev/null
 
 	NTP_Ready
 
 	Check_Lock
-
 	if [ "$1" != "force" ]; then
 		sleep 14
 	fi
 
-	Create_Symlinks
-	Auto_ServiceEvent create 2>/dev/null
 	Shortcut_Script create
+	Auto_ServiceEvent create 2>/dev/null
 
 	"$SCRIPT_DIR/S99tailtop" start >/dev/null 2>&1
 
@@ -1614,15 +1826,17 @@ Menu_Startup(){
 }
 
 ##----------------------------------------##
-## Modified by Martinski W. [2023-Jun-09] ##
+## Modified by Martinski W. [2024-Apr-28] ##
 ##----------------------------------------##
-Menu_Uninstall(){
+Menu_Uninstall()
+{
 	Print_Output true "Removing $SCRIPT_NAME..." "$PASS"
 	Shortcut_Script delete
 	Auto_Startup delete 2>/dev/null
 	Auto_ServiceEvent delete 2>/dev/null
-	NTPBootWatchdog disable
-	TailTaintDns disable
+	NTP_BootWatchdog disable
+	NTP_ReadyCheckOption delete
+	TailTaintDNSmasq disable
 
 	LOCKFILE=/tmp/addonwebui.lock
 	FD=386
@@ -1701,21 +1915,72 @@ Menu_Uninstall(){
 	Print_Output true "Uninstall completed" "$PASS"
 }
 
-NTP_Ready(){
-	if [ "$(nvram get ntp_ready)" -eq 0 ]; then
+##-------------------------------------##
+## Added by Martinski W. [2024-Apr-28] ##
+##-------------------------------------##
+WAN_IsConnected()
+{
+   local retCode=1
+   for iFaceNum in 0 1
+   do
+       if [ "$(nvram get wan${iFaceNum}_primary)" -eq 1 ] && \
+          [ "$(nvram get wan${iFaceNum}_state_t)" -eq 2 ]
+       then retCode=0 ; break ; fi
+   done
+   return "$retCode"
+}
+
+##----------------------------------------##
+## Modified by Martinski W. [2024-Apr-28] ##
+##----------------------------------------##
+NTP_Ready()
+{
+	local ntpWaitSecs  NTP_READY_CHECK_STATUS
+
+	NTP_READY_CHECK_STATUS="$(NTP_ReadyCheckOption status)"
+
+	if [ "$(nvram get ntp_ready)" -eq 1 ]
+	then
+		[ "$isInteractiveMenuMode" = "false" ] && \
+		Print_Output false "NTP is synced." "$PASS"
+		return 0
+	fi
+
+	##--------------------------------------------------------------
+	## If WAN is in a "connected" state, ignore when "NTP Ready"
+	## check is disabled. IOW, the "NTP Ready" check is skipped
+	## if WAN is *not* in the "connected" state. This is done
+	## to avoid any problems related not having NTP synchronized.
+	##--------------------------------------------------------------
+	if [ "$NTP_READY_CHECK_STATUS" = "DISABLED" ] && ! WAN_IsConnected
+	then
+		[ "$isInteractiveMenuMode" = "false" ] && \
+		Print_Output true "Check for NTP sync is currently DISABLED. Skipping check..." "$REDct"
+		return 0
+	fi
+
+	if [ "$(nvram get ntp_ready)" -eq 0 ]
+	then
 		Check_Lock
-		ntpwaitcount=0
-		while [ "$(nvram get ntp_ready)" -eq 0 ] && [ "$ntpwaitcount" -lt 600 ]; do
-			ntpwaitcount="$((ntpwaitcount + 30))"
-			Print_Output true "Waiting for NTP to sync..." "$WARN"
-			sleep 30
+		Print_Output true "Waiting for NTP to sync..." "$WARN"
+
+		ntpWaitSecs=0
+		while [ "$(nvram get ntp_ready)" -eq 0 ] && [ "$ntpWaitSecs" -lt 600 ]
+		do
+			if [ "$ntpWaitSecs" -gt 0 ] && [ "$((ntpWaitSecs % 20))" -eq 0 ]
+			then
+			    Print_Output true "Waiting for NTP to sync [$ntpWaitSecs secs]..." "$WARN"
+			fi
+			sleep 5
+			ntpWaitSecs="$((ntpWaitSecs + 5))"
 		done
-		if [ "$ntpwaitcount" -ge 600 ]; then
+
+		if [ "$ntpWaitSecs" -ge 600 ]; then
 			Print_Output true "NTP failed to sync after 10 minutes. Please resolve!" "$CRIT"
 			Clear_Lock
 			exit 1
 		else
-			Print_Output true "NTP synced, $SCRIPT_NAME will now continue" "$PASS"
+			Print_Output true "NTP has synced, $SCRIPT_NAME will now continue" "$PASS"
 			Clear_Lock
 		fi
 	fi
@@ -1779,11 +2044,16 @@ EOF
 }
 ### ###
 
-if [ -z "$1" ]; then
-	NTP_Ready
+##----------------------------------------##
+## Modified by Martinski W. [2024-Apr-28] ##
+##----------------------------------------##
+if [ $# -eq 0 ] || [ -z "$1" ]
+then
+	isInteractiveMenuMode=true
 	Create_Dirs
-	Shortcut_Script create
 	Create_Symlinks
+	NTP_Ready
+	Shortcut_Script create
 	Auto_Startup create 2>/dev/null
 	Auto_ServiceEvent create 2>/dev/null
 	Process_Upgrade
@@ -1792,6 +2062,9 @@ if [ -z "$1" ]; then
 	exit 0
 fi
 
+##----------------------------------------##
+## Modified by Martinski W. [2024-Apr-29] ##
+##----------------------------------------##
 case "$1" in
 	install)
 		Check_Lock
@@ -1803,14 +2076,30 @@ case "$1" in
 		exit 0
 	;;
 	service_event)
-		if [ "$2" = "start" ] && echo "$3" | grep "${SCRIPT_NAME_LOWER}config"; then
-			settingstate="$(echo "$3" | sed "s/${SCRIPT_NAME_LOWER}config//")";
-			NTPBootWatchdog "$settingstate"
+		if [ "$2" = "start" ] && echo "$3" | grep -qE "^${SCRIPT_NAME_LOWER}_NTPwatchdog"
+		then
+			settingstate="$(echo "$3" | sed "s/${SCRIPT_NAME_LOWER}_NTPwatchdog//")";
+			settingstate="$(echo "$settingstate" | tr 'A-Z' 'a-z')"
+			NTP_BootWatchdog "$settingstate"
 			exit 0
-		elif [ "$2" = "start" ] && echo "$3" | grep "${SCRIPT_NAME_LOWER}servicerestart"; then
+		elif [ "$2" = "start" ] && echo "$3" | grep -qE "^${SCRIPT_NAME_LOWER}_NTPcheck"
+		then
+			settingstate="$(echo "$3" | sed "s/${SCRIPT_NAME_LOWER}_NTPcheck//")";
+			settingstate="$(echo "$settingstate" | tr 'A-Z' 'a-z')"
+			NTP_ReadyCheckOption "$settingstate"
+			exit 0
+		elif [ "$2" = "start" ] && echo "$3" | grep -qE "^${SCRIPT_NAME_LOWER}_DNSmasqWatchdog"
+		then
+			settingstate="$(echo "$3" | sed "s/${SCRIPT_NAME_LOWER}_DNSmasqWatchdog//")";
+			settingstate="$(echo "$settingstate" | tr 'A-Z' 'a-z')"
+			TailTaintDNSmasq "$settingstate"
+			exit 0
+		elif [ "$2" = "start" ] && echo "$3" | grep -qE "^${SCRIPT_NAME_LOWER}servicerestart"
+		then
 			rm -f "$SCRIPT_WEB_DIR/detect_service.js"
 			echo 'var servicestatus = "InProgress";' > "$SCRIPT_WEB_DIR/detect_service.js"
 			srvname="$(echo "$3" | sed "s/${SCRIPT_NAME_LOWER}servicerestart//")";
+
 			if [ "$srvname" = "vsftpd" ]; then
 				ENABLED_FTP="$(nvram get enable_ftp)"
 				if ! Validate_Number "$ENABLED_FTP"; then ENABLED_FTP=0; fi
@@ -1897,8 +2186,8 @@ case "$1" in
 	;;
 	postupdate)
 		Create_Dirs
-		Shortcut_Script create
 		Create_Symlinks
+		Shortcut_Script create
 		Auto_Startup create 2>/dev/null
 		Auto_ServiceEvent create 2>/dev/null
 		Process_Upgrade
