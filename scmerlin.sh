@@ -29,12 +29,12 @@ readonly SCRIPT_NAME_LOWER="$(echo "$SCRIPT_NAME" | tr 'A-Z' 'a-z' | sed 's/d//'
 readonly SCM_VERSION="v2.5.3"
 readonly SCRIPT_VERSION="v2.5.3"
 SCRIPT_BRANCH="master"
-SCRIPT_REPO="https://proxy.muuua.cn/proxy/https://raw.githubusercontent.com/decoderman/$SCRIPT_NAME/$SCRIPT_BRANCH"
+SCRIPT_REPO="https://proxy.muuua.cn/proxy/https://raw.githubusercontent.com/xcz1997/$SCRIPT_NAME/$SCRIPT_BRANCH"
 readonly SCRIPT_DIR="/jffs/addons/$SCRIPT_NAME_LOWER.d"
 readonly SCRIPT_WEBPAGE_DIR="$(readlink /www/user)"
 readonly SCRIPT_WEB_DIR="$SCRIPT_WEBPAGE_DIR/$SCRIPT_NAME_LOWER"
 readonly SHARED_DIR="/jffs/addons/shared-jy"
-readonly SHARED_REPO="https://proxy.muuua.cn/proxy/https://raw.githubusercontent.com/decoderman/shared-jy/master"
+readonly SHARED_REPO="https://proxy.muuua.cn/proxy/https://raw.githubusercontent.com/xcz1997/shared-jy/master"
 readonly SHARED_WEB_DIR="$SCRIPT_WEBPAGE_DIR/shared-jy"
 readonly NTP_WATCHDOG_FILE="$SCRIPT_DIR/.watchdogenabled"
 readonly TAIL_TAINTED_FILE="$SCRIPT_DIR/.tailtaintdnsenabled"
@@ -2213,13 +2213,13 @@ case "$1" in
 	;;
 	develop)
 		SCRIPT_BRANCH="develop"
-		SCRIPT_REPO="https://proxy.muuua.cn/proxy/https://raw.githubusercontent.com/decoderman/$SCRIPT_NAME/$SCRIPT_BRANCH"
+		SCRIPT_REPO="https://proxy.muuua.cn/proxy/https://raw.githubusercontent.com/xcz1997/$SCRIPT_NAME/$SCRIPT_BRANCH"
 		Update_Version force
 		exit 0
 	;;
 	stable)
 		SCRIPT_BRANCH="master"
-		SCRIPT_REPO="https://proxy.muuua.cn/proxy/https://raw.githubusercontent.com/decoderman/$SCRIPT_NAME/$SCRIPT_BRANCH"
+		SCRIPT_REPO="https://proxy.muuua.cn/proxy/https://raw.githubusercontent.com/xcz1997/$SCRIPT_NAME/$SCRIPT_BRANCH"
 		Update_Version force
 		exit 0
 	;;
